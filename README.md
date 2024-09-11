@@ -5,4 +5,4 @@ That repository created for learning library sqlalchemy
 - sqlalchemy 2.0+
 - sqlite and sqlitestudio(or other GUIs)
 - create virtual environment in python
-- instal additional libraries ```bash pip install -r requirements.txt```
+- install additional libraries ```bash pip install -r requirements.txt```
