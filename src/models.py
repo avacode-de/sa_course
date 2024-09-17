@@ -1,13 +1,21 @@
 import datetime
 from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column
-from database import Base
+from database import Base, str_256
+from typing import Annotated
 import enum
+
+intpk = Annotated[int, mapped_column(primary_key = True)]
+created_at = Annotated[datetime.datetime, mapped_column(server_default=text("(datetime('now'))"))]
+updated_at = Annotated[datetime.datetime, mapped_column(
+        server_default=text("(datetime('now'))"),
+        onupdate=datetime.datetime.utcnow,
+    )]
 
 class WorkersOrm(Base):
     __tablename__ = "workers"
 
-    id: Mapped[int] = mapped_column(primary_key = True)
+    id: Mapped[intpk]
     username: Mapped[str]
 
 class WorkLoadOrm(enum.Enum):
@@ -17,13 +25,13 @@ class WorkLoadOrm(enum.Enum):
 class ResumesOrm(Base):
     __tablename__ = "resumes"
 
-    id: Mapped[int] = mapped_column(primary_key = True)
-    title: Mapped[str]
+    id: Mapped[intpk]
+    title: Mapped[str_256]
     compensasion: Mapped[int] = mapped_column(nullable=True) #can equals Null also
     workload: Mapped[WorkLoadOrm]
     worker_id: Mapped[int] = mapped_column(ForeignKey("workers.id", ondelete="CASCADE")) #ForeignKey may bind few models
-    created_at: Mapped[datetime.datetime] = mapped_column(server_default=text("TIMEZONE('utc', now())"))
-
+    created_at: Mapped[created_at]
+    updated_at: Mapped[updated_at]
 
 
 
