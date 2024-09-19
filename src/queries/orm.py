@@ -1,23 +1,84 @@
-from sqlalchemy import text, insert
+from sqlalchemy import Integer, cast, func, text, insert, select, and_
 from database import sync_engine, async_engine, session_factory, async_session_factory, Base
-from models import WorkersOrm, metadata_obj, workers_table
+from models import ResumesOrm, WorkersOrm, WorkLoadOrm, metadata_obj, workers_table
 
-def create_tables():
-    Base.metadata.drop_all(sync_engine) #first of all, delete all previous tables
-    sync_engine.echo = True
-    Base.metadata.create_all(sync_engine)
-    sync_engine.echo = True
+class SyncORM:
+    @staticmethod
+    def create_tables():
+        sync_engine.echo = False
+        Base.metadata.drop_all(sync_engine)
+        Base.metadata.create_all(sync_engine)
+        sync_engine.echo = True
 
-def insert_data():
-    with session_factory() as session:
-        worker_bobr = WorkersOrm(username="Bobr")
-        worker_volk = WorkersOrm(username="Volk")
-        session.add_all([worker_bobr, worker_volk])
-        session.commit()
+    @staticmethod
+    def insert_workers():
+        with session_factory() as session:
+            worker_jack = WorkersOrm(username="Jack")
+            worker_michael = WorkersOrm(username="Michael")
+            session.add_all([worker_jack, worker_michael])
+            # flush отправляет запрос в базу данных
+            # После flush каждый из работников получает первичный ключ id, который отдала БД
+            session.flush()
+            session.commit()
 
-async def insert_data():
-    async with async_session_factory() as session:
-        worker_bobr = WorkersOrm(username="Bobr")
-        worker_volk = WorkersOrm(username="Volk")
-        session.add_all([worker_bobr, worker_volk])
-        await session.commit()
+    @staticmethod
+    def select_workers():
+        with session_factory() as session:
+            query = select(workers_table) #SELECT * FROM workers
+            result = session.execute(query)
+            workers = result.all() 
+            print(f"{workers=}")
+
+    @staticmethod
+    def update_worker(worker_id: int = 2, new_username: str = "Misha"):
+        with session_factory() as session:
+            worker_michael = session.get(WorkersOrm, worker_id)
+            worker_michael.username = new_username
+            # session.expire()
+            #resets users settings
+            #session.refresh()
+            #refresh updates current value to value from the database
+            session.commit()
+    
+    @staticmethod
+    def insert_resumes():
+        with session_factory() as session:
+            resume_jack_1 = ResumesOrm(
+                title="Python Junior Developer", compensation=50000, workload=WorkLoadOrm.fulltime, worker_id=1)
+            resume_jack_2 = ResumesOrm(
+                title="Python Разработчик", compensation=150000, workload=WorkLoadOrm.fulltime, worker_id=1)
+            resume_michael_1 = ResumesOrm(
+                title="Python Data Engineer", compensation=250000, workload=WorkLoadOrm.parttime, worker_id=2)
+            resume_michael_2 = ResumesOrm(
+                title="Data Scientist", compensation=300000, workload=WorkLoadOrm.fulltime, worker_id=2)
+            session.add_all([resume_jack_1, resume_jack_2, 
+                             resume_michael_1, resume_michael_2])
+            session.commit()
+
+    @staticmethod
+    def select_resumes_avg_compansation(like_language: str = "Python"):
+        with session_factory() as session:
+            # query is request
+            # func for function call from database managment system
+            # filter (same with where) needed for editing values
+            """
+            select workload, avg(compensation)::int as avg_compensation
+            from resumes
+            where title like '%Python%' and compensation > 40000
+            group by workload
+            having avg(compensation) > 70000
+            """
+        query = (
+            select(
+                ResumesOrm.workload,
+                cast(func.avg(ResumesOrm.compensation), Integer).label("avg_compensation")
+            )
+            .select_from(ResumesOrm)
+            .filter(and_(
+                ResumesOrm.title.contains(like_language),
+                ResumesOrm.compensation > 40000
+            ))
+            .group_by(ResumesOrm.workload)
+            .having(cast(func.avg(ResumesOrm.compensation), Integer) > 70000)
+        )
+        print(query)

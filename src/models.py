@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey, text
+from sqlalchemy import TIMESTAMP, Table, Column, Integer, String, MetaData, ForeignKey, text, Enum
 from sqlalchemy.orm import Mapped, mapped_column
 from database import Base, str_256
 from typing import Annotated
@@ -27,7 +27,7 @@ class ResumesOrm(Base):
 
     id: Mapped[intpk]
     title: Mapped[str_256]
-    compensasion: Mapped[int] = mapped_column(nullable=True) #can equals Null also
+    compensation: Mapped[int] = mapped_column(nullable=True) #can equals Null also
     workload: Mapped[WorkLoadOrm]
     worker_id: Mapped[int] = mapped_column(ForeignKey("workers.id", ondelete="CASCADE")) #ForeignKey may bind few models
     created_at: Mapped[created_at]
@@ -61,5 +61,17 @@ workers_table = Table(
     metadata_obj,
     Column("id", Integer, primary_key=True),
     Column("username", String),
+)
+
+resumes_table = Table(
+    "resumes",
+    metadata_obj,
+    Column("id", Integer, primary_key=True),
+    Column("title", String(256)),
+    Column("compensation", Integer, nullable=True),
+    Column("workload", Enum(WorkLoadOrm)),
+    Column("worker_id", ForeignKey("workers.id", ondelete="CASCADE")),
+    Column("created_at", TIMESTAMP,server_default=text("TIMEZONE('utc', now())")),
+    Column("updated_at", TIMESTAMP,server_default=text("TIMEZONE('utc', now())"), onupdate=datetime.datetime.utcnow),
 )
 
