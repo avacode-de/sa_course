@@ -1,6 +1,6 @@
 import datetime
 from sqlalchemy import TIMESTAMP, Table, Column, Integer, String, MetaData, ForeignKey, text, Enum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base, str_256
 from typing import Annotated
 import enum
@@ -18,6 +18,16 @@ class WorkersOrm(Base):
     id: Mapped[intpk]
     username: Mapped[str]
 
+    resumes: Mapped[list["ResumesOrm"]] = relationship(
+        back_populates="worker",
+    )
+
+    resumes_partrime: Mapped[list["ResumesOrm"]] = relationship(
+        back_populates="worker",
+        primaryjoin="and_(WorkersOrm.id == ResumesOrm.worker_id, ResumesOrm.workload == 'parttime')",
+        order_by="ResumesOrm.id.desc()"
+    )
+
 class WorkLoadOrm(enum.Enum):
     parttime = "parttime"
     fulltime = "fulltime"
@@ -32,6 +42,13 @@ class ResumesOrm(Base):
     worker_id: Mapped[int] = mapped_column(ForeignKey("workers.id", ondelete="CASCADE")) #ForeignKey may bind few models
     created_at: Mapped[created_at]
     updated_at: Mapped[updated_at]
+
+    worker: Mapped["WorkersOrm"] = relationship(
+        back_populates="resumes"
+    )
+
+    repr_cols_num = 4
+    repr_cols = ("created_at", ) 
 
 
 

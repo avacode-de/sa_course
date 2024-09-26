@@ -1,5 +1,5 @@
 from sqlalchemy import Integer, cast, func, text, insert, select, and_
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, joinedload, selectinload, contains_eager
 from database import sync_engine, async_engine, session_factory, async_session_factory, Base
 from models import ResumesOrm, WorkersOrm, WorkLoadOrm, metadata_obj, workers_table
 
@@ -9,7 +9,7 @@ class SyncORM:
         sync_engine.echo = False
         Base.metadata.drop_all(sync_engine)
         Base.metadata.create_all(sync_engine)
-        sync_engine.echo = True
+        sync_engine.echo = False
 
     @staticmethod
     def insert_workers():
@@ -137,7 +137,7 @@ class SyncORM:
                      r.workload,
                      func.avg(r.compensation).over(partition_by=r.workload).cast(Integer).label("avg_workload_compensation")
                  )
-                 .join(r.worker_id == w.id).subquery("helper1")
+                 .join(w, r.worker_id == w.id).subquery("helper1")
              )
              cte = (
                 select(
@@ -155,11 +155,124 @@ class SyncORM:
                  .order_by(cte.c.compensation_diff.desc())
              )
 
-             res = session.execute()
+             res = session.execute(query)
              result = res.all()
              print(f"{result=}")
 
+    @staticmethod
+    def select_workers_with_lazy_relationship():
+        with session_factory() as session:
+            query = (
+                select(
+                    WorkersOrm
+                )
+            )
+
+            res = session.execute(query)
+            result = res.scalars().all()
+            
+            worker_1_resumes = result[0].resumes
+            # print(worker_1_resumes)
+
+            worker_2_resumes = result[1].resumes
+            # print(worker_2_resumes)
+
+    @staticmethod
+    def select_workers_with_joined_relationship():
+        # joinedload() method allows to create one general request, so as not to create any others
+        # joinedload() fits only for many to on or one to one requests
+        with session_factory() as session:
+            query = (
+                select(
+                    WorkersOrm
+                )
+                .options(joinedload(WorkersOrm.resumes))
+            )
+
+            res = session.execute(query)
+            result = res.unique().scalars().all()
+            
+            worker_1_resumes = result[0].resumes
+            # print(worker_1_resumes)
+
+            worker_2_resumes = result[1].resumes
+            # print(worker_2_resumes)
+
+    @staticmethod
+    def select_workers_with_selectin_relationship():
+        #selectinload() fits to o2m or m2m
+        with session_factory() as session:
+            query = (
+                select(
+                    WorkersOrm
+                )
+                .options(selectinload(WorkersOrm.resumes))
+            )
+
+            res = session.execute(query)
+            result = res.unique().scalars().all()
+            
+            worker_1_resumes = result[0].resumes
+            # print(worker_1_resumes)
+
+            worker_2_resumes = result[1].resumes
+            # print(worker_2_resumes)
+
+    @staticmethod
+    def select_workers_with_condition_relationship():
+        with session_factory() as session:
+            query = (
+                select(
+                    WorkersOrm
+                )
+                .options(selectinload(WorkersOrm.resumes_partrime))
+            )
+
+            res = session.execute(query)
+            result = res.unique().scalars().all()
+
+            print(result)
     
+    @staticmethod
+    def select_workers_with_condition_relationship_contains_eager():
+        #contains.eager() creats a nested structure
+        with session_factory() as session:
+            query = (
+                select(
+                    WorkersOrm
+                )
+                .join(WorkersOrm.resumes)
+                .options(contains_eager(WorkersOrm.resumes))
+                .filter(ResumesOrm.workload=='parttime')
+            )
+
+            res = session.execute(query)
+            result = res.unique().scalars().all()
+
+            print(result)
+
+    # @staticmethod
+    # def select_workers_with_relationship_contains_eager_with_limit():
+    #     with session_factory() as session:
+    #         subq = (
+    #             select(ResumesOrm.id.label("parttime_resume_id"))
+    #             .filter(ResumesOrm.worker_id == WorkersOrm.id)
+    #             .order_by(WorkersOrm.id.desc())
+    #             .limit(1)
+    #             .scalar_subquery()
+    #             .correlate(WorkersOrm)
+    #         )
+
+    #         query = (
+    #             select(WorkersOrm)
+    #             .join(ResumesOrm, ResumesOrm.id.in_(subq))
+    #             .options(contains_eager(WorkersOrm.resumes))
+    #         )
+
+    #         res = session.execute(query)
+    #         result = res.unique().scalars().all()
+    #         print(result)
+        
         
 class AsyncORM:
     @staticmethod
@@ -321,3 +434,48 @@ class AsyncORM:
             res = await session.execute(query)
             result = res.all()
             print(f"{result=}")
+
+    @staticmethod
+    async def select_workers_with_lazy_relationship():
+        async with async_session_factory() as session:
+            query = (
+                select(WorkersOrm)
+            )
+            
+            res = await session.execute(query)
+            result = res.scalars().all()
+
+    @staticmethod
+    async def select_workers_with_joined_relationship():
+        async with async_session_factory() as session:
+            query = (
+                select(WorkersOrm)
+                .options(joinedload(WorkersOrm.resumes))
+            )
+            
+            res = await session.execute(query)
+            result = res.unique().scalars().all()
+
+            worker_1_resumes = result[0].resumes
+            # print(worker_1_resumes)
+            
+            worker_2_resumes = result[1].resumes
+            # print(worker_2_resumes)
+
+
+    @staticmethod
+    async def select_workers_with_selectin_relationship():
+        async with async_session_factory() as session:
+            query = (
+                select(WorkersOrm)
+                .options(selectinload(WorkersOrm.resumes))
+            )
+            
+            res = await session.execute(query)
+            result = res.unique().scalars().all()
+
+            worker_1_resumes = result[0].resumes
+            # print(worker_1_resumes)
+            
+            worker_2_resumes = result[1].resumes
+            # print(worker_2_resumes)
