@@ -2,6 +2,8 @@ from sqlalchemy import Integer, cast, func, text, insert, select, and_
 from sqlalchemy.orm import aliased, joinedload, selectinload, contains_eager
 from database import sync_engine, async_engine, session_factory, async_session_factory, Base
 from models import ResumesOrm, WorkersOrm, WorkLoadOrm, metadata_obj, workers_table
+from schemas import WorkersDTO, WorkersRelDTO
+from pydantic import BaseModel
 
 class SyncORM:
     @staticmethod
@@ -225,7 +227,7 @@ class SyncORM:
                 select(
                     WorkersOrm
                 )
-                .options(selectinload(WorkersOrm.resumes_partrime))
+                .options(selectinload(WorkersOrm.resumes_parttime))
             )
 
             res = session.execute(query)
@@ -272,6 +274,22 @@ class SyncORM:
     #         res = session.execute(query)
     #         result = res.unique().scalars().all()
     #         print(result)
+
+    @staticmethod
+    def convert_workers_to_dto():
+        with session_factory() as session:
+            query = (
+                select(WorkersOrm)
+                .options(selectinload(WorkersOrm.resumes))
+                .limit(2)
+            )
+
+            res = session.execute(query)
+            result_orm = res.scalars().all()
+            print(f"{result_orm=}")
+            result_dto = [WorkersRelDTO.model_validate(row, from_attributes=True) for row in result_orm]
+            print(f"{result_dto=}")
+            return result_dto
         
         
 class AsyncORM:

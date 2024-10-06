@@ -3,6 +3,10 @@ import os
 import sys
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 # from queries.core import create_tables, insert_data
 from queries.orm import SyncORM, AsyncORM
 from queries.core import SyncCore
@@ -37,7 +41,7 @@ async def main():
         SyncORM.select_workers_with_condition_relationship()
         SyncORM.select_workers_with_condition_relationship_contains_eager()
         # SyncORM.select_workers_with_relationship_contains_eager_with_limit()
-        # SyncORM.convert_workers_to_dto()
+        SyncORM.convert_workers_to_dto()
         # SyncORM.add_vacancies_and_replies()
         # SyncORM.select_resumes_with_all_relationships()
 
@@ -73,5 +77,25 @@ async def main():
         # await AsyncORM.add_vacancies_and_replies()
         # await AsyncORM.select_resumes_with_all_relationships()
 
+def create_fastapi_app():
+    app = FastAPI()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins = ["*"],
+    )
+
+    @app.get("/workers", tags=["Кандидат"])
+    async def get_workers():
+        workers = SyncORM.convert_workers_to_dto()
+        return workers
+    
+    return app
+
+app = create_fastapi_app()
+
 if __name__ == "__main__":
-     asyncio.run(main())
+    asyncio.run(main())
+    uvicorn.run(
+        app="src.main:app",
+        reload=True,
+    )
