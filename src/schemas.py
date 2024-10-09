@@ -26,3 +26,14 @@ class ResumesRelDTO(ResumesDTO):
 
 class WorkersRelDTO(WorkersDTO):
     resumes: list["ResumesDTO"]
+
+class VacanciesAddDTO(BaseModel):
+    title: str
+    compensation: Optional[int]
+
+class VacanciesDTO(VacanciesAddDTO):
+    id: int
+
+class ResumesRelVacanciesRepliedDTO(ResumesDTO):
+    workes: "WorkersDTO"
+    vacancies_replied: list["VacanciesDTO"]

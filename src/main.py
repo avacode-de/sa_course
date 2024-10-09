@@ -42,8 +42,8 @@ async def main():
         SyncORM.select_workers_with_condition_relationship_contains_eager()
         # SyncORM.select_workers_with_relationship_contains_eager_with_limit()
         SyncORM.convert_workers_to_dto()
-        # SyncORM.add_vacancies_and_replies()
-        # SyncORM.select_resumes_with_all_relationships()
+        SyncORM.add_vacancies_and_replies()
+        SyncORM.select_resumes_with_all_relationships()
 
     # ========== ASYNC ==========
     # CORE
@@ -74,8 +74,8 @@ async def main():
         # await AsyncORM.select_workers_with_condition_relationship_contains_eager()
         # await AsyncORM.select_workers_with_relationship_contains_eager_with_limit()
         # await AsyncORM.convert_workers_to_dto()
-        # await AsyncORM.add_vacancies_and_replies()
-        # await AsyncORM.select_resumes_with_all_relationships()
+        await AsyncORM.add_vacancies_and_replies()
+        await AsyncORM.select_resumes_with_all_relationships()
 
 def create_fastapi_app():
     app = FastAPI()
@@ -88,6 +88,11 @@ def create_fastapi_app():
     async def get_workers():
         workers = SyncORM.convert_workers_to_dto()
         return workers
+    
+    @app.get("/resumes", tags=["Резюме"])
+    async def get_resumes():
+        resumes = await AsyncORM.select_resumes_with_all_relationships()
+        return resumes
     
     return app
 

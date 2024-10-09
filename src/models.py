@@ -2,7 +2,7 @@ import datetime
 from sqlalchemy import TIMESTAMP, Table, Column, Integer, String, MetaData, ForeignKey, text, Enum, Index, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base, str_256
-from typing import Annotated
+from typing import Annotated, Optional
 import enum
 
 intpk = Annotated[int, mapped_column(primary_key = True)]
@@ -47,6 +47,11 @@ class ResumesOrm(Base):
         back_populates="resumes"
     )
 
+    vacancies_replied: Mapped[list["VacanciesOrm"]] = relationship(
+        back_populates="resumes_replied",
+        secondary="vacancies_replies",
+    )
+
     repr_cols_num = 4
     repr_cols = ("created_at", ) 
 
@@ -56,18 +61,33 @@ class ResumesOrm(Base):
     )
 
 
+class VacanciesOrm(Base):
+    __tablename__ = "vacancies"
 
+    id: Mapped[intpk]
+    title: Mapped[str_256]
+    compensation: Mapped[Optional[int]]
+    
+    resumes_replied: Mapped[list["ResumesOrm"]] = relationship(
+        back_populates="vacancies_replied",
+        secondary="vacancies_replies" #bind two table in one relationship
+    )
 
+class VacanciesRepliesOrm(Base):
+    #this table makes relationship m2m
+    #requires two primary keys
+    __tablename__ = "vacancies_replies"
 
+    resume_id: Mapped[int] = mapped_column(
+        ForeignKey("resumes.id", ondelete="CASCADE"),
+        primary_key = True,        
+    )
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("vacancies.id", ondelete="CASCADE"),
+        primary_key = True,
+    )
 
-
-
-
-
-
-
-
-
+    cover_letter: Mapped[Optional[str]]
 
 
 

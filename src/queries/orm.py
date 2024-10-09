@@ -1,7 +1,9 @@
 from sqlalchemy import Integer, cast, func, text, insert, select, and_
 from sqlalchemy.orm import aliased, joinedload, selectinload, contains_eager
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from database import sync_engine, async_engine, session_factory, async_session_factory, Base
-from models import ResumesOrm, WorkersOrm, WorkLoadOrm, metadata_obj, workers_table
+from models import ResumesOrm, VacanciesOrm, WorkersOrm, WorkLoadOrm, metadata_obj, workers_table
 from schemas import WorkersDTO, WorkersRelDTO
 from pydantic import BaseModel
 
@@ -291,6 +293,28 @@ class SyncORM:
             print(f"{result_dto=}")
             return result_dto
         
+    @staticmethod
+    def add_vacancies_and_replies():
+        with session_factory() as session:
+            new_vacancy = VacanciesOrm(title = "Python разработчик", compensation = 100000)
+            resume_1 = session.get(ResumesOrm, 1)
+            resume_2 = session.get(ResumesOrm, 2)
+            resume_1.vacancies_replied.append(new_vacancy)
+            resume_2.vacancies_replied.append(new_vacancy)
+            session.commit()
+
+    @staticmethod
+    def select_resumes_with_all_relationships():
+        with session_factory() as session:
+            query = (
+                select(ResumesOrm)
+                .options(joinedload(ResumesOrm.worker))
+                .options(selectinload(ResumesOrm.vacancies_replied).load_only(VacanciesOrm.title))
+            )
+
+            res = session.execute(query)
+            result = res.unique().scalars().all()
+            print(f"{result=}")
         
 class AsyncORM:
     @staticmethod
@@ -497,3 +521,26 @@ class AsyncORM:
             
             worker_2_resumes = result[1].resumes
             # print(worker_2_resumes)
+
+    @staticmethod
+    async def add_vacancies_and_replies():
+        async with async_session_factory() as session:
+            new_vacancy = VacanciesOrm(title = "Python разработчик", compensation = 100000)
+            resume_1 = session.get(ResumesOrm, 1)
+            resume_2 = session.get(ResumesOrm, 2)
+            resume_1.vacancies_replied.append(new_vacancy)
+            resume_2.vacancies_replied.append(new_vacancy)
+            await session.commit()
+
+    @staticmethod
+    async def select_resumes_with_all_relationships():
+        async with async_session_factory() as session:
+            query = (
+                select(ResumesOrm)
+                .options(joinedload(ResumesOrm.worker))
+                .options(selectinload(ResumesOrm.vacancies_replied).load_only(VacanciesOrm.title))
+            )
+
+            res = await session.execute(query)
+            result = res.unique().scalars().all()
+            print(f"{result=}") 
